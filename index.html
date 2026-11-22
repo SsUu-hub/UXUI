@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>스타필드 펫모차 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 실제 출시된 스타필드 앱처럼 차분하고 정돈된 톤
+   IDEA: Figma 프레임 13장을 그대로 옮긴 손에 쥔 휴대폰 한 대
+   PICTURE: 393×852 폰 프레임이 곧 그림, 옆에는 화면 목록
+   COLOUR and TYPE: 흰 바탕 + 스타필드 레드 #c30e2e, 회색 #f6f6f6 카드 / Pretendard → Noto Sans KR
+   LAYOUT: 데스크톱은 폰 + 오른쪽 화면 인덱스, 모바일은 폰만 꽉 차게 */
+:root{color-scheme:light dark;--red:#c30e2e;--red-soft:#fbe9ec;--ink:#111;--sub:#555;--mute:#999;--line:#e3e3e3;--card:#f6f6f6;
+--stage:light-dark(#ecebe9,#151515);--stage-ink:light-dark(#222,#ddd)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--stage);color:var(--stage-ink);font:16px/1.5 Pretendard,"Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+.stage{min-height:100vh;display:flex;gap:48px;align-items:center;justify-content:center;padding:32px 16px}
+.side{width:260px}
+.side h1{font-size:22px;line-height:1.2;margin:0 0 6px;letter-spacing:-.5px}
+.side p{font-size:14px;margin:0 0 18px;opacity:.7}
+.side ol{list-style:none;padding:0;margin:0;display:grid;gap:2px}
+.side li button{width:100%;text-align:left;padding:9px 12px;border-radius:10px;font-size:14px;display:flex;gap:10px;align-items:center}
+.side li button:hover{background:light-dark(#fff,#262626)}
+.side li button.on{background:var(--red);color:#fff}
+.side li span{font-size:12px;opacity:.55;width:18px}
+.side .reset{margin-top:16px;font-size:13px;text-decoration:underline;opacity:.7;padding:8px 0}
+/* phone */
+.phone{position:relative;width:393px;height:852px;background:#fff;color:var(--ink);border-radius:48px;overflow:hidden;overflow:clip;box-shadow:0 0 0 10px #111,0 0 0 11px #333,0 30px 80px rgba(0,0,0,.35);flex:none;color-scheme:light}
+.status{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:center;padding:4px 34px 0 44px;font-weight:600;font-size:16px;z-index:40;pointer-events:none}
+.status svg{height:12px}
+.screen{position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;transition:transform .34s cubic-bezier(.2,.8,.2,1),opacity .34s;will-change:transform}
+.screen.hide{display:none}
+.screen.enter-r{transform:translateX(100%)}.screen.exit-l{transform:translateX(-28%);opacity:.6}
+.screen.enter-l{transform:translateX(-28%);opacity:.6}.screen.exit-r{transform:translateX(100%)}
+.screen.fade{opacity:0}
+.top{height:110px;flex:none;padding:54px 24px 0;display:flex;align-items:center;gap:10px;position:relative}
+.top .t{position:absolute;left:0;right:0;text-align:center;font-size:20px;font-weight:500;pointer-events:none}
+.ib{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;position:relative;z-index:2}
+.ib:active{background:#eee}
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 24px 24px;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+.body.nav-pad{padding-bottom:130px}
+.foot{padding:12px 24px 34px;display:grid;gap:10px;flex:none;background:#fff}
+h2{font-size:18px;font-weight:700;margin:28px 0 14px;letter-spacing:-.3px}
+h3{font-size:20px;font-weight:600;margin:16px 0 18px;letter-spacing:-.8px}
+.btn{height:46px;border-radius:12px;font-weight:600;font-size:16px;display:grid;place-items:center;width:100%;transition:transform .12s,background .2s,opacity .2s}
+.btn:active{transform:scale(.98)}
+.btn.p{background:var(--red);color:#fff}.btn.o{border:1px solid var(--red);color:var(--red);background:#fff}
+.btn.g{background:#dfdfdf;color:#000;font-weight:700;font-size:15px;height:38px}
+.btn[disabled]{background:#d6d6d6;color:#fff;cursor:not-allowed}
+.btn.sm{height:36px;font-size:14px;border-radius:10px}
+.toast{position:absolute;left:50%;bottom:120px;transform:translate(-50%,20px);background:rgba(20,20,20,.92);color:#fff;font-size:14px;padding:11px 18px;border-radius:24px;opacity:0;transition:.25s;z-index:90;white-space:nowrap;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+/* home */
+.hero{position:relative;height:189px;border-radius:12px;overflow:hidden;margin-top:14px;background:#ccc url(img/hero.jpg) center/cover}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,0,0,.62),rgba(0,0,0,0) 62%)}
+.hero b{position:absolute;left:30px;top:28px;color:#fff;font-size:24px;font-weight:600;line-height:1.2;letter-spacing:-.5px}
+.hero .btn{position:absolute;left:27px;right:24px;bottom:23px;width:auto;height:45px;font-weight:700}
+.cart{border:1px solid #c3c3c3;border-radius:12px;padding:22px 24px 22px}
+.cart .row{display:flex;justify-content:space-between;align-items:center}
+.cart .name{font-weight:600}
+.pill{font-size:13px;font-weight:500;padding:3px 10px;border-radius:99px;background:#ececec;color:#555;white-space:nowrap}
+.pill.r{background:#fff;border:1px solid var(--red);color:var(--red)}
+.pill.rf{background:var(--red);color:#fff}
+.bat{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin:14px 0 6px}
+.bar{height:8px;background:#dfdfdf;border-radius:15px;overflow:hidden;margin-bottom:14px}
+.bar i{display:block;height:100%;width:0;background:var(--red);border-radius:15px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 11px}
+.qm{background:var(--card);border-radius:12px;height:115px;padding:18px 14px;text-align:left;display:flex;flex-direction:column;justify-content:flex-end;transition:transform .12s,background .2s}
+.qm:active{transform:scale(.97);background:#eee}
+.qm svg{margin-bottom:auto}
+.qm b{font-size:15px;font-weight:600;letter-spacing:-.6px}.qm small{font-size:12px;color:var(--sub)}
+.banner{display:block;width:100%;margin-top:14px;background:#eddff0;border-radius:12px;padding:16px 14px;text-align:left}
+.banner b{font-size:15px;display:block}.banner small{font-size:12px;color:var(--sub)}
+/* nav */
+.nav{position:absolute;left:18px;right:18px;bottom:18px;height:92px;border-radius:46px;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.13);display:flex;align-items:center;padding:0 14px 0 16px;z-index:30;transition:transform .3s}
+.nav.off{transform:translateY(140px)}
+.nav .back{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;box-shadow:0 2px 10px rgba(0,0,0,.1);margin-right:10px}
+.nav .it{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mute);height:60px;justify-content:center}
+.nav .it.on{color:var(--red)}
+.nav .it svg{width:26px;height:26px}
+/* form */
+label.l{display:block;font-size:14px;color:var(--sub);margin:0 0 8px}
+.field{height:46px;border:1px solid #c3c3c3;border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;width:100%;text-align:left;background:#fff;font-size:16px}
+.field:focus-visible,.btn:focus-visible,button:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.checks{background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08);padding:10px 16px}
+.ck{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:15px;width:100%;text-align:left}
+.box{width:18px;height:18px;border:1.5px solid #bbb;border-radius:4px;display:grid;place-items:center;flex:none;transition:.15s}
+.ck.on .box{background:var(--red);border-color:var(--red)}
+.box svg{opacity:0}.ck.on .box svg{opacity:1}
+.hint{font-size:13px;color:var(--mute);margin-top:10px}
+/* done */
+.done{text-align:center;padding-top:40px}
+.badge{width:64px;height:64px;border-radius:50%;background:var(--red);display:grid;place-items:center;margin:0 auto 14px;animation:pop .5s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+.done b{font-size:18px;display:block}.done small{color:var(--sub);font-size:14px}
+.info{border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:36px;text-align:left;font-size:14px}
+.info .r{display:grid;grid-template-columns:64px 1fr 32px;align-items:center;min-height:36px}
+.info .r span{color:var(--sub)}
+.pin{width:30px;height:30px;border-radius:50%;background:#e6e6e6;display:grid;place-items:center}
+/* tabs / history */
+.tabs{display:flex;gap:18px;border-bottom:1px solid #eee;margin:0 -24px;padding:0 24px}
+.tab{padding:8px 0;font-size:14px;color:var(--mute);position:relative}
+.tab.on{color:var(--red);font-weight:600}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--red)}
+.chips{display:flex;gap:8px;align-items:center;margin:18px 0 14px;flex-wrap:wrap}
+.chip{height:30px;border:1px solid #333;border-radius:99px;padding:0 10px 0 12px;font-size:13px;display:inline-flex;align-items:center;gap:4px;background:#fff}
+.chip.r{border-color:var(--red);color:var(--red)}
+.chip.ic{margin-left:auto;width:32px;padding:0;justify-content:center;border-color:#ccc}
+.cnt{display:flex;justify-content:space-between;font-size:13px;padding-bottom:10px;border-bottom:1.5px solid #111;margin-bottom:16px}
+.cnt button{color:var(--red);font-size:13px}
+.rc{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;font-size:14px;animation:rise .35s both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+.rc .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rc .h b{font-size:15px}
+.rc dl{display:grid;grid-template-columns:52px 1fr;margin:0;row-gap:2px}
+.rc dt{color:var(--sub)}.rc dd{margin:0}
+.rc .btn{margin-top:12px}
+.empty{text-align:center;color:var(--mute);font-size:14px;padding:50px 0}
+/* sheet */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:.25s;z-index:60}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:12px 24px 34px;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.8,.2,1);z-index:70;max-height:78%;display:flex;flex-direction:column}
+.sheet.on{transform:none}
+.grab{width:40px;height:4px;border-radius:4px;background:#ccc;margin:0 auto 18px}
+.seg{display:flex;gap:8px;justify-content:center;margin-bottom:18px}
+.seg button{height:32px;padding:0 16px;border-radius:9px;border:1px solid #ccc;font-size:13px}
+.seg button.on{background:#000;color:#fff;border-color:#000}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;overflow:auto}
+.opts.one{grid-template-columns:1fr}
+.sheet .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.dates .field{height:40px;font-size:13px;color:var(--mute)}
+.list button.li{width:100%;text-align:left;padding:14px 4px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;font-size:16px}
+.list button.li.on{color:var(--red);font-weight:600}
+.modal{position:absolute;left:32px;right:32px;top:50%;transform:translate(0,-40%) scale(.96);background:#fff;border-radius:18px;padding:26px 22px 20px;z-index:80;opacity:0;pointer-events:none;transition:.22s;text-align:center}
+.modal.on{opacity:1;transform:translate(0,-50%);pointer-events:auto}
+.modal b{display:block;font-size:17px;margin-bottom:6px}.modal p{font-size:14px;color:var(--sub);margin:0 0 20px}
+.modal .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* find */
+.search{display:flex;gap:8px;margin-top:6px}
+.search input{flex:1;height:44px;border:1px solid #c3c3c3;border-radius:12px;padding:0 14px;font-size:16px;outline:0}
+.search input:focus{border-color:var(--red)}
+.search .btn{width:56px;height:44px;font-size:15px}
+.mapw{position:relative;height:200px;margin:12px -24px 0;overflow:hidden;overflow:clip;background:#f2f1ee}
+.mapw .m{position:absolute;inset:0;background:url(img/map.jpg) center/cover;transition:transform .35s;transform-origin:center}
+.zoom{position:absolute;right:14px;bottom:14px;display:grid;gap:6px}
+.zoom button{width:34px;height:34px;border-radius:50%;background:#000;color:#fff;display:grid;place-items:center}
+.me{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--red);border:3px solid #fff;box-shadow:0 0 0 0 rgba(195,14,46,.5);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 14px rgba(195,14,46,0)}100%{box-shadow:0 0 0 0 rgba(195,14,46,0)}}
+.floor{border-bottom:1px solid #eee;margin:0 -24px}
+.floor>button{width:100%;display:flex;justify-content:space-between;align-items:center;padding:20px 24px;font-weight:600}
+.floor>button svg{transition:transform .25s}
+.floor.open>button svg{transform:rotate(90deg)}
+.floor .in{display:none;padding:0 24px 10px}
+.floor.open .in{display:block}
+.st{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 0;text-align:left;font-size:15px}
+.st small{display:block;font-size:12px;color:var(--mute)}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.tag.free{background:#e6f4ea;color:#1e7a3a}.tag.cart{background:var(--red-soft);color:var(--red)}.tag.no{background:#eee;color:#888}
+/* store */
+.photo{height:204px;margin:0 -24px;background:#2e2a27 url(img/store.jpg) center/cover}
+.sh{display:flex;justify-content:space-between;align-items:center;margin:28px 0 14px}
+.sh h3{margin:0}
+.heart svg{transition:transform .2s}.heart.on svg{transform:scale(1.15)}
+.desc{color:#767676;font-size:16px;line-height:22px;letter-spacing:-.6px;margin:0 0 20px}
+.kv{display:grid;grid-template-columns:74px 1fr 32px;align-items:start;row-gap:12px;font-size:16px;letter-spacing:-.6px}
+.kv span{color:#767676}
+.cir{width:32px;height:32px;border-radius:50%;background:#e6e6e6;display:grid;place-items:center}
+.svc{display:flex;gap:28px;margin:14px 0 8px}
+.svc div{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px}
+/* mypage */
+.input{width:100%;height:44px;border:1px solid #c3c3c3;border-radius:12px;padding:0 14px;font-size:16px;outline:0;margin-bottom:14px}
+.input:focus{border-color:var(--red)}
+.panel{border:1px solid var(--line);border-radius:12px;padding:0 16px}
+.panel .rw{display:flex;justify-content:space-between;align-items:center;min-height:56px;border-bottom:1px solid #f0f0f0;font-size:15px;width:100%;text-align:left}
+.panel .rw:last-child{border:0}
+.sw{width:46px;height:26px;border-radius:99px;background:#ddd;position:relative;transition:.2s;flex:none}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on{background:var(--red)}.sw.on::after{left:23px}
+/* device */
+.mode{display:flex;gap:8px;padding:14px 0}
+.mode button{height:36px;padding:0 16px;border-radius:10px;background:#ececec;font-size:14px;font-weight:600}
+.mode button.on{background:#000;color:#fff}
+.chk{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:10px;font-size:15px;font-weight:600}
+/* route */
+.routew{position:relative;height:362px;border-radius:0;overflow:hidden;margin-top:12px}
+.routew .m{position:absolute;inset:0;background:url(img/map.jpg) center/cover}
+.dist{position:absolute;left:0;top:0;background:var(--red);color:#fff;padding:10px 16px;display:flex;align-items:baseline;gap:8px;z-index:2;border-bottom-right-radius:8px}
+.dist b{font-size:32px;font-weight:700;line-height:1.2}.dist small{font-size:14px;font-weight:600}
+.routew svg{position:absolute;inset:0}
+.here{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--red);border:3px solid #fff;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.here::before,.here::after{content:"";position:absolute;inset:-3px;border-radius:50%;background:rgba(195,14,46,.45);z-index:-1;animation:glow 2s ease-out infinite}
+.here::after{animation-delay:1s}
+@keyframes glow{from{transform:scale(1);opacity:.9}to{transform:scale(4.2);opacity:0}}
+@media(max-width:860px){.side{display:none}.stage{padding:0}}
+@media(max-width:440px){.phone{width:100vw;height:100svh;border-radius:0;box-shadow:none}.stage{padding:0}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="phone" id="phone">
+  <div class="status"><span>9:41</span><svg viewBox="0 0 68 12"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="6" rx="1"/><rect x="10" y="2.5" width="3" height="8.5" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/><path d="M29 3.5a9 9 0 0 1 12 0l-1.4 1.5a7 7 0 0 0-9.2 0zM31.6 6.3a5 5 0 0 1 6.8 0L35 10z"/><rect x="45.5" y=".5" width="21" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="47.5" y="2.5" width="17" height="7" rx="1.5"/></svg></div>
+
+  <!-- HOME -->
+  <section class="screen" id="home">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button></div>
+    <div class="body nav-pad">
+      <div class="hero"><b>반려견과 함께하는<br>스타필드 나들이</b><button class="btn p" data-go="rent">펫모차 대여하기</button></div>
+      <h2>이용 중인 펫모차</h2>
+      <div class="cart" id="homeCart"></div>
+      <h2>빠른 메뉴</h2>
+      <div class="grid2">
+        <button class="qm" data-go="find"><svg width="30" height="30" fill="none" stroke="#c30e2e" stroke-width="2"><circle cx="13" cy="13" r="10"/><path d="M20.5 20.5l7 7" stroke-linecap="round"/></svg><b>매장 찾기</b><small>매장 출입 조건</small></button>
+        <button class="qm" data-act="dog"><svg width="34" height="30" fill="none" stroke="#c30e2e" stroke-width="2"><path d="M10 4h14a6 6 0 0 1 6 6v3a4 4 0 0 1-4-4v8a9 9 0 0 1-18 0V9a4 4 0 0 1-4 4v-3a6 6 0 0 1 6-6z"/><path d="M15 20h4l-2 2z" fill="#c30e2e"/><circle cx="13" cy="15" r="1" fill="#c30e2e"/><circle cx="21" cy="15" r="1" fill="#c30e2e"/></svg><b>반려견 상태</b><small>케어 기록</small></button>
+        <button class="qm" data-go="find" data-tab="2"><svg width="26" height="36" fill="none" stroke="#c30e2e" stroke-width="2"><path d="M13 33s10-10 10-19a10 10 0 0 0-20 0c0 9 10 19 10 19z"/><circle cx="13" cy="13" r="4"/></svg><b>편의 시설</b><small>펫 유모차 안내</small></button>
+        <button class="qm" data-go="history"><svg width="32" height="30" fill="none" stroke="#c30e2e" stroke-width="2"><rect x="2" y="5" width="28" height="23" rx="2"/><path d="M2 11h28M9 2v6M23 2v6M11 19l4 4 7-7"/></svg><b>예약 내역</b><small>이용 기록</small></button>
+      </div>
+      <button class="banner" data-act="news"><b>신규매장 안내</b><small>스타필드 소식과 혜택을 확인하세요.</small></button>
+    </div>
+  </section>
+
+  <!-- RENT -->
+  <section class="screen hide" id="rent">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t">펫모차 대여</div></div>
+    <div class="body">
+      <h3 style="font-size:18px;font-weight:700;margin-top:6px">펫모차를 예약해주세요.</h3>
+      <label class="l">대여 점포</label>
+      <button class="field" id="fStore" data-sheet="store"><span></span><svg width="20" height="20" fill="none" stroke="#000" stroke-width="2"><path d="M5 8l5 5 5-5"/></svg></button>
+      <div class="f2">
+        <div><label class="l">이용 날짜</label><button class="field" id="fDate" data-sheet="date"><span></span><svg width="20" height="20" fill="none" stroke="#000" stroke-width="1.6"><rect x="2.5" y="4" width="15" height="13.5" rx="2"/><path d="M2.5 8.5h15M6.5 2v4M13.5 2v4"/></svg></button></div>
+        <div><label class="l">시작 시간</label><button class="field" id="fTime" data-sheet="time"><span></span><svg width="20" height="20" fill="none" stroke="#000" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><path d="M10 5v5l3 2"/></svg></button></div>
+      </div>
+      <h2>이용 전 확인해주세요</h2>
+      <div class="checks" id="checks">
+        <button class="ck on" data-ck><span class="box"><svg width="12" height="12" fill="none" stroke="#fff" stroke-width="2.4"><path d="M2 6l3 3 5-6"/></svg></span>반려견 크기·무게 기준 확인</button>
+        <button class="ck" data-ck><span class="box"><svg width="12" height="12" fill="none" stroke="#fff" stroke-width="2.4"><path d="M2 6l3 3 5-6"/></svg></span>안전줄 및 이용 규칙 확인</button>
+        <button class="ck" data-ck><span class="box"><svg width="12" height="12" fill="none" stroke="#fff" stroke-width="2.4"><path d="M2 6l3 3 5-6"/></svg></span>반납 장소 확인</button>
+      </div>
+      <p class="hint" id="ckHint">3개 항목을 모두 확인하면 예약할 수 있어요.</p>
+    </div>
+    <div class="foot"><button class="btn p" id="submit" disabled>예약 신청</button></div>
+  </section>
+
+  <!-- DONE -->
+  <section class="screen hide" id="done">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t">예약 완료</div></div>
+    <div class="body">
+      <div class="done"><div class="badge"><svg width="36" height="32" fill="none" stroke="#fff" stroke-width="2.2"><path d="M11 3h14a6 6 0 0 1 6 6v3a4 4 0 0 1-4-4v8a9 9 0 0 1-18 0V8a4 4 0 0 1-4 4V9a6 6 0 0 1 6-6z"/><path d="M16 19h4l-2 2z" fill="#fff"/></svg></div><b>예약이 완료됐어요</b><small id="wait">대기 인원: 3명</small></div>
+      <div class="info" id="doneInfo"></div>
+    </div>
+    <div class="foot"><button class="btn p" data-home>홈으로</button><button class="btn o" data-go="history">예약 및 이용 내역 보기</button></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="screen hide" id="history">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t">예약 내역</div></div>
+    <div class="body" style="padding-bottom:100px">
+      <div class="tabs" id="hTabs"><button class="tab on" data-h="cur">현재 이용내역</button><button class="tab" data-h="past">지난 이용내역</button></div>
+      <div class="chips" id="hChips"></div>
+      <div class="cnt"><span id="hCount"></span><button id="hReset" hidden>필터 초기화</button></div>
+      <div id="hList"></div>
+    </div>
+    <div class="foot" style="position:absolute;left:0;right:0;bottom:0"><button class="btn p" data-go="rent">새 예약 신청</button></div>
+  </section>
+
+  <!-- FIND -->
+  <section class="screen hide" id="find">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t">매장 찾기</div></div>
+    <div class="body nav-pad">
+      <form class="search" id="sForm"><input id="sInput" placeholder="반상 하남점" value="" aria-label="매장 검색"><button class="btn p">검색</button></form>
+      <div class="tabs" id="fTabs" style="margin-top:16px"><button class="tab">층별 안내</button><button class="tab on">카테고리 안내</button><button class="tab">편의시설</button></div>
+      <div class="chips" id="fChips"></div>
+      <div class="mapw"><div class="m" id="fMap"></div><span class="me" style="left:57%;top:46%"></span><div class="zoom"><button data-z="1" aria-label="확대">+</button><button data-z="-1" aria-label="축소">−</button></div></div>
+      <div id="floors"></div>
+    </div>
+  </section>
+
+  <!-- STORE -->
+  <section class="screen hide" id="store">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t" id="sTitle">반상 하남점</div></div>
+    <div class="body">
+      <div class="photo"></div>
+      <div class="sh"><h3 id="sName">반상 하남점</h3><button class="ib heart" id="heart" aria-label="찜하기"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="1.8"><path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"/></svg></button></div>
+      <p class="desc">정성껏 차린 한식과 가정식을 한 상에 담아내는 밥집입니다. 갓 지은 밥에 제철 나물과 푸짐한 국, 찌개를 곁들인 든든한 한 끼를 만나보세요.</p>
+      <div class="kv">
+        <span>영업시간</span><div>평일 10:30 - 20:00<br>주말 10:30 - 21:00</div><i></i>
+        <span>대표전화</span><div>031-1234-5678</div><button class="cir" data-act="call" aria-label="전화"><svg width="16" height="16" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 2h3l1.5 4L5.5 7.5a9 9 0 0 0 3 3L10 8.5l4 1.5v3a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 1.5 3.5 1.5 1.5 0 0 1 3 2z"/></svg></button>
+        <span>매장위치</span><div id="sFloor">3F</div><button class="cir" data-go="route" aria-label="길 안내"><svg width="14" height="18" fill="none" stroke="#000" stroke-width="1.8"><path d="M7 16.5s6-5.5 6-10a6 6 0 0 0-12 0c0 4.5 6 10 6 10z"/><circle cx="7" cy="6.5" r="2"/></svg></button>
+      </div>
+      <p style="color:#767676;margin:26px 0 0;letter-spacing:-.6px">이용 가능 서비스</p>
+      <div class="svc">
+        <div><svg width="40" height="28" fill="none" stroke="#c30e2e" stroke-width="2"><path d="M2 6h36v5a3 3 0 0 0 0 6v5H2v-5a3 3 0 0 0 0-6z"/><path d="M14 6v16" stroke-dasharray="2 3"/></svg>신세계 상품권</div>
+        <div><svg width="28" height="28" fill="none" stroke="#c30e2e" stroke-width="2"><circle cx="14" cy="14" r="12"/><path d="M11 20V8h4a3 3 0 0 1 0 6h-4"/></svg>포인트 적립</div>
+        <div><svg width="26" height="28" fill="none" stroke="#c30e2e" stroke-width="2"><path d="M3 9h20l-2 17H5zM8 9a5 5 0 0 1 10 0"/></svg>포장 가능</div>
+      </div>
+    </div>
+    <div class="foot"><button class="btn p" data-act="homepage">반상 홈페이지</button></div>
+  </section>
+
+  <!-- MYPAGE -->
+  <section class="screen hide" id="my">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t">마이페이지</div></div>
+    <div class="body nav-pad">
+      <h2 style="margin-top:6px">마이페이지</h2>
+      <label class="l" for="nick">닉네임</label><input class="input" id="nick" placeholder="닉네임 입력">
+      <label class="l" for="dog">반려견 이름</label><input class="input" id="dog" placeholder="반려견 이름 입력">
+      <button class="btn p" id="saveInfo">정보 저장</button>
+      <h2>앱 설정</h2>
+      <div class="panel">
+        <button class="rw" data-sw>예약·반납 알림<span class="sw on"></span></button>
+        <button class="rw" data-sw>기기 상태 알림<span class="sw on"></span></button>
+        <button class="rw" data-sw>위치 권한 사용<span class="sw"></span></button>
+      </div>
+      <h2>고객지원</h2>
+      <div class="panel">
+        <button class="rw" data-act="faq">이용가이드·FAQ<svg width="18" height="18" fill="none" stroke="#000" stroke-width="2"><path d="M7 4l5 5-5 5"/></svg></button>
+        <button class="rw" data-act="report">고장 및 오류 신고<svg width="18" height="18" fill="none" stroke="#000" stroke-width="2"><path d="M7 4l5 5-5 5"/></svg></button>
+        <button class="rw" data-act="ask">문의하기<svg width="18" height="18" fill="none" stroke="#000" stroke-width="2"><path d="M7 4l5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEVICE -->
+  <section class="screen hide" id="device">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t">펫모차</div></div>
+    <div class="body nav-pad">
+      <div class="tabs"><button class="tab on">펫모차 기기</button><button class="tab" data-go="history" data-past>지난 이용내역</button></div>
+      <h2>펫모차 기기</h2>
+      <div class="cart" id="devCart"></div>
+      <h2>연결</h2>
+      <button class="btn g" id="connBtn"></button>
+      <h2>주행 설정</h2>
+      <div class="panel"><div class="mode" id="mode"><button class="on">수동</button><button>전동 저속</button></div></div>
+      <h2>점검</h2>
+      <div class="chk">연결 상태<span class="pill" id="pConn">대기</span></div>
+      <div class="chk">배터리 시스템<span class="pill" id="pBat">미확인</span></div>
+      <button class="btn g" id="inspect">점검 요청</button>
+    </div>
+  </section>
+
+  <!-- ROUTE -->
+  <section class="screen hide" id="route">
+    <div class="top"><button class="ib" data-back aria-label="뒤로"><svg width="24" height="24" fill="none" stroke="#000" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><button class="ib" data-home aria-label="홈"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="1.8"><path d="M3 10l8-6.5 8 6.5v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="t" style="font-size:22px">길 안내</div></div>
+    <div class="body nav-pad">
+      <h3 id="rMsg" style="margin-top:16px">안내를 시작합니다.</h3>
+      <div class="routew">
+        <div class="m"></div>
+        <div class="dist"><b id="rDist">120m</b><small id="rMin">약 2분</small></div>
+        <svg viewBox="0 0 345 362" preserveAspectRatio="none"><path d="M0 112 H209 V161" fill="none" stroke="#c30e2e" stroke-width="4" stroke-linejoin="round"/></svg><span class="here" style="left:60.6%;top:44.5%"></span>
+        <div class="zoom"><button aria-label="확대">+</button><button aria-label="축소">−</button></div>
+        
+      </div>
+      <div style="margin-top:36px"><button class="btn o" id="endRoute">안내 종료</button></div>
+    </div>
+  </section>
+
+  <nav class="nav" id="nav">
+    <button class="back" data-back aria-label="뒤로"><svg width="22" height="22" fill="none" stroke="#000" stroke-width="2"><path d="M19 11H4M10 5l-6 6 6 6"/></svg></button>
+    <button class="it" data-tabgo="home"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h14v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3zM18 9h3"/><circle cx="8" cy="21" r="2" fill="currentColor"/><circle cx="16" cy="21" r="2" fill="currentColor"/></svg>펫모차</button>
+    <button class="it" data-tabgo="find"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 23s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="13" cy="11" r="2.5"/></svg>매장 검색</button>
+    <button class="it" data-tabgo="history"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="18" height="18" rx="2"/><path d="M4 10h18M9 2.5v5M17 2.5v5"/></svg>예약 내역</button>
+    <button class="it" data-tabgo="my"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13" cy="9" r="5"/><path d="M4 24a9 9 0 0 1 18 0"/></svg>마이페이지</button>
+  </nav>
+
+  <div class="dim" id="dim"></div>
+  <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody" style="display:flex;flex-direction:column;min-height:0"></div></div>
+  <div class="modal" id="modal"><b id="mT"></b><p id="mP"></p><div class="acts"><button class="btn o sm" id="mNo">취소</button><button class="btn p sm" id="mYes">확인</button></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<aside class="side">
+  <h1>스타필드 펫모차</h1>
+  <p>Figma 프레임 13장 기반 프로토타입 · 화면을 직접 눌러보거나 아래에서 바로 이동하세요.</p>
+  <ol id="index"></ol>
+  <button class="reset" id="resetAll">처음 상태로 초기화</button>
+</aside>
+</div>
+
+<script>
+{
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const ck='<svg width="12" height="12" fill="none" stroke="#fff" stroke-width="2.4"><path d="M2 6l3 3 5-6"/></svg>';
+const chev='<svg width="18" height="18" fill="none" stroke="#000" stroke-width="2"><path d="M7 4l5 5-5 5"/></svg>';
+const down='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>';
+const x='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 2l8 8M10 2l-8 8"/></svg>';
+const filt='<svg width="16" height="16" fill="none" stroke="#000" stroke-width="1.6"><path d="M1 4h14M1 12h14"/><circle cx="5" cy="4" r="2" fill="#fff"/><circle cx="11" cy="12" r="2" fill="#fff"/></svg>';
+const pinS='<svg width="12" height="15" fill="none" stroke="#000" stroke-width="1.6"><path d="M6 14s5-4.5 5-8.3A5 5 0 0 0 1 5.7C1 9.5 6 14 6 14z"/><circle cx="6" cy="5.5" r="1.6"/></svg>';
+
+const STORES=['스타필드 하남점','스타필드 고양점','스타필드 안성점','스타필드 수원점','스타필드 코엑스몰'];
+const TIMES=['10:30','11:00','11:30','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
+const DATES=['2026-11-23','2026-11-24','2026-11-25','2026-11-26','2026-11-27','2026-11-28','2026-11-29'];
+const FLOORS={B1:[['이마트 트레이더스','마트','cart'],['노브랜드','마트','cart'],['몰리스 펫샵','반려동물','free']],
+ '1F':[['MLB','패션','cart'],['디스커버리','패션','free'],['스타벅스','카페','no'],['안내 데스크','편의시설','free']],
+ '2F':[['게스','패션','free'],['지오다노','패션','free'],['그라미치','패션','cart'],['스튜디오 톰보이','패션','free'],['코닥','패션','cart'],['반스','슈즈','free'],['엄브로','스포츠','free'],['헌터','슈즈','cart'],['펜필드','패션','free'],['에이카','라이프','cart'],['뷰오리','패션','free'],['네스프레소','카페','no']],
+ '3F':[['반상 하남점','한식','cart'],['고메 아트리움','푸드코트','no'],['딘타이펑','중식','no'],['쉐이크쉑','양식','cart'],['몽중헌','중식','no'],['보노보노','뷔페','no'],['피에프창','양식','cart'],['잠바주스','카페','free'],['파이브가이즈','양식','cart'],['한일관','한식','no'],['도우룸','베이커리','free'],['플레인 키친','양식','cart'],['슈퍼보울','양식','free'],['라그릴리아','양식','cart'],['멘야하나비','일식','no'],['카페 마마스','카페','free'],['호랑이 식당','한식','cart']]};
+const TAG={free:['조건없이 출입 가능','free'],cart:['펫모차 이용 시 출입 가능','cart'],no:['출입 불가능','no']};
+
+const init=()=>({connected:false,battery:0,form:{store:'스타필드 하남점',date:'2026-11-23',time:'11:00',checks:[true,false,false]},
+ cur:[{id:1,store:'스타필드 하남점',rsv:'2026-11-05',use:'2026-11-06 11:00~',cart:'#SF-001',st:'이용중'},{id:2,store:'스타필드 고양점',rsv:'2026-11-04',use:'2026-11-06 14:00~',cart:'#SF-018',st:'예약완료'}],
+ past:[{store:'스타필드 하남점',rsv:'2026-10-15',use:'2026-10-15 11:00~(2시간 28분 이용)',cart:'#SF-002·탄숑 초코'},{store:'스타필드 고양점',rsv:'2026-10-14',use:'2026-10-14 14:00~(1시간 31분 이용)',cart:'#SF-018·탄숑 초코'},{store:'스타필드 고양점',rsv:'2026-09-12',use:'2026-09-12 17:45~(2시간 10분 이용)',cart:'#SF-013·탄숑 초코'},{store:'스타필드 고양점',rsv:'2026-08-30',use:'2026-08-30 13:10~(58분 이용)',cart:'#SF-007·탄숑 초코'},{store:'스타필드 안성점',rsv:'2026-06-02',use:'2026-06-02 15:00~(1시간 12분 이용)',cart:'#SF-031·탄숑 초코'}],
+ hTab:'cur',hPeriod:'전체',hStores:[],fFilter:{floor:'전체',cat:'전체',dog:[]},fTab:1,zoom:1,heart:false,mode:0,inspected:false});
+let S=init(),nid=10;
+
+/* ---------- navigation ---------- */
+const NAMES={home:'홈',rent:'펫모차 대여',done:'예약 완료',history:'예약 내역',find:'매장 찾기',store:'매장 상세',my:'마이페이지',device:'펫모차 기기',route:'길 안내'};
+const NAVON={home:'home',device:'home',find:'find',store:'find',history:'history',my:'my',route:'find'};
+const NOBAR=['rent','done','store','history'];
+let stack=['home'];
+const show=(to,dir)=>{
+  const from=$('.screen:not(.hide)'),el=$('#'+to);
+  if(from===el){render(to);return}
+  render(to);
+  el.classList.remove('hide');
+  if(dir){el.classList.add(dir==='f'?'enter-r':'enter-l');from&&from.classList.add(dir==='f'?'exit-l':'exit-r');el.style.zIndex=dir==='f'?2:0;from&&(from.style.zIndex=dir==='f'?0:2)}
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{el.classList.remove('enter-r','enter-l')}));
+  setTimeout(()=>{if(from){from.classList.add('hide');from.classList.remove('exit-l','exit-r')}el.style.zIndex='';},dir?360:0);
+  if(from&&!dir)from.classList.add('hide');
+  el.querySelector('.body')&&dir==='f'&&(el.querySelector('.body').scrollTop=0);
+  $('#nav').classList.toggle('off',NOBAR.includes(to));
+  $$('.nav .it').forEach(b=>b.classList.toggle('on',b.dataset.tabgo===NAVON[to]));
+  $$('#index button').forEach(b=>b.classList.toggle('on',b.dataset.k===to));
+  if(to!=='route')stopRoute();
+};
+const go=to=>{stack.push(to);show(to,'f')};
+const back=()=>{if(stack.length<2)return toast('첫 화면이에요');stack.pop();show(stack.at(-1),'b')};
+const home=()=>{closeAll();if(stack.at(-1)==='home'){$('#home .body').scrollTo({top:0,behavior:'smooth'});return toast('펫모차 메인이에요')}stack=['home'];show('home','b')};
+const tabgo=to=>{if(stack.at(-1)===to){$('#'+to+' .body').scrollTo({top:0,behavior:'smooth'});return}stack=to==='home'?['home']:['home',to];show(to,'f')};
+
+/* ---------- toast / sheet / modal ---------- */
+let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)};
+const openSheet=html=>{$('#sheetBody').innerHTML=html;$('#dim').classList.add('on');$('#sheet').classList.add('on')};
+const closeAll=()=>{$('#dim').classList.remove('on');$('#sheet').classList.remove('on');$('#modal').classList.remove('on')};
+let onYes=null;
+const confirmM=(t,p,yes,cb)=>{$('#mT').textContent=t;$('#mP').textContent=p;$('#mYes').textContent=yes;onYes=cb;$('#dim').classList.add('on');$('#modal').classList.add('on')};
+
+/* ---------- renders ---------- */
+const cartHTML=(withBtn)=>`<div class="row"><span class="name">펫모차 #SF-001</span><span class="pill ${S.connected?'rf':''}">${S.connected?'연결중':'미연결'}</span></div>
+ <div class="bat"><span>배터리 잔량</span><span>${S.connected?S.battery+'%':''}</span></div><div class="bar"><i style="width:0"></i></div>
+ ${withBtn?'<button class="btn g" data-go="device">기기 관리</button>':''}`;
+const fillBar=sel=>requestAnimationFrame(()=>setTimeout(()=>{const i=$(sel+' .bar i');i&&(i.style.width=(S.connected?S.battery:0)+'%')},60));
+
+const R={
+ home(){$('#homeCart').innerHTML=cartHTML(true);fillBar('#homeCart')},
+ rent(){const f=S.form;$('#fStore span').textContent=f.store.replace('스타필드 ','');$('#fDate span').textContent=f.date.replace(/-/g,' - ');$('#fTime span').textContent=f.time;
+   $$('[data-ck]').forEach((b,i)=>b.classList.toggle('on',f.checks[i]));const ok=f.checks.every(Boolean);$('#submit').disabled=!ok;
+   $('#ckHint').textContent=ok?'모든 항목을 확인했어요.':`${3-f.checks.filter(Boolean).length}개 항목을 더 확인해주세요.`},
+ done(){const r=S.cur[0];$('#doneInfo').innerHTML=`<div class="r"><span>예약정보</span><b style="font-weight:600">${r.store}</b><i></i></div><div class="r"><span></span><span style="color:#111">${r.use.replace('~','')}</span><i></i></div>
+  <div class="r"><span>대여장소</span><span style="color:#111">안내 데스크 1F</span><button class="pin" data-go="route" aria-label="길 안내">${pinS}</button></div>
+  <div class="r"><span>반납장소</span><span style="color:#111">안내 데스크 1F</span><button class="pin" data-go="route" aria-label="길 안내">${pinS}</button></div>`},
+ history(){
+  $$('#hTabs .tab').forEach(t=>t.classList.toggle('on',t.dataset.h===S.hTab));
+  const filtered=S.hPeriod!=='전체'||S.hStores.length;
+  const ch=[];
+  if(S.hTab==='past'&&filtered){if(S.hPeriod!=='전체')ch.push(`<button class="chip r" data-clr="p">${S.hPeriod} ${x}</button>`);if(S.hStores.length)ch.push(`<button class="chip r" data-clr="s">${S.hStores[0].replace('스타필드 ','')}${S.hStores.length>1?' 외 '+(S.hStores.length-1):''} ${x}</button>`)}
+  else ch.push(`<button class="chip" data-hs="period">${S.hPeriod==='전체'?'예약 기간':S.hPeriod} ${down}</button><button class="chip" data-hs="store">${S.hStores.length?S.hStores[0].replace('스타필드 ',''):'점포'} ${down}</button>`);
+  ch.push(`<button class="chip ic" data-hs="period" aria-label="필터">${filt}</button>`);
+  $('#hChips').innerHTML=ch.join('');
+  let list=S.hTab==='cur'?S.cur:S.past;
+  if(S.hStores.length)list=list.filter(r=>S.hStores.includes(r.store));
+  if(S.hPeriod!=='전체'){const lim={'최근 1주일':7,'최근 1개월':31,'최근 3개월':92,'최근 6개월':183,'최근 1년':365}[S.hPeriod]||9999;const now=new Date('2026-11-22');list=list.filter(r=>(now-new Date(r.rsv))/864e5<=lim)}
+  $('#hCount').textContent=`총 ${list.length}건`;$('#hReset').hidden=!filtered;
+  $('#hList').innerHTML=list.length?list.map(r=>`<div class="rc"><div class="h"><b>${r.store}</b><span class="pill r">${r.st||'반납완료'}</span></div>
+   <dl><dt>예약일</dt><dd>${r.rsv}</dd><dt>이용일</dt><dd>${r.use}</dd><dt>펫모차</dt><dd>펫모차 ${r.cart}</dd></dl>
+   ${r.st==='이용중'?`<button class="btn o sm" data-ret="${r.id}">반납 완료하기</button>`:''}${r.st==='예약완료'?`<button class="btn o sm" data-cancel="${r.id}" style="border-color:#bbb;color:#555">예약 취소</button>`:''}</div>`).join(''):'<div class="empty">조건에 맞는 내역이 없어요.</div>';
+ },
+ find(){
+  $$('#fTabs .tab').forEach((t,i)=>t.classList.toggle('on',i===S.fTab));
+  const f=S.fFilter;
+  $('#fChips').innerHTML=`<button class="chip ${f.floor!=='전체'?'r':''}" data-fs="0">${f.floor==='전체'?'층':f.floor} ${down}</button><button class="chip ${f.cat!=='전체'?'r':''}" data-fs="1">${f.cat==='전체'?'카테고리':f.cat} ${down}</button><button class="chip ${f.dog.length?'r':''}" data-fs="2">반려견${f.dog.length?' '+f.dog.length:''} ${down}</button><button class="chip ic" data-fs="2" aria-label="필터">${filt}</button>`;
+  const q=$('#sInput').value.trim();
+  const tabCat=S.fTab===2?'편의시설':null;
+  $('#floors').innerHTML=Object.entries(FLOORS).filter(([k])=>f.floor==='전체'||f.floor===k).map(([k,arr])=>{
+    let a=arr.filter(s=>(f.cat==='전체'||s[1]===f.cat)&&(!tabCat||s[1]===tabCat)&&(!f.dog.length||f.dog.includes(s[2]))&&(!q||s[0].includes(q.replace(/\s*하남점$/,''))));
+    return `<div class="floor${a.length&&q?' open':''}"><button data-fl>${k} (${a.length})${chev}</button><div class="in">${a.map(s=>`<button class="st" data-st="${s[0]}" data-fl2="${k}"><span>${s[0]}<small>${s[1]}</small></span><span class="tag ${TAG[s[2]][1]}">${TAG[s[2]][0]}</span></button>`).join('')||'<div class="empty" style="padding:14px 0">해당 매장이 없어요.</div>'}</div></div>`}).join('');
+  $('#fMap').style.transform=`scale(${S.zoom})`;
+ },
+ store(){$('#heart').classList.toggle('on',S.heart);$('#heart path').setAttribute('fill',S.heart?'#c30e2e':'none');$('#heart path').setAttribute('stroke',S.heart?'#c30e2e':'#000')},
+ my(){},
+ device(){$('#devCart').innerHTML=cartHTML(false);fillBar('#devCart');$('#devCart .pill').className='pill '+(S.connected?'r':'');
+  $('#connBtn').textContent=S.connected?'연결 해제':'연결하기';$('#connBtn').className='btn '+(S.connected?'g':'p');$('#connBtn').style.height='38px';
+  $$('#mode button').forEach((b,i)=>b.classList.toggle('on',i===S.mode));
+  $('#pConn').textContent=S.connected?'정상':'대기';$('#pConn').className='pill '+(S.connected?'r':'');
+  $('#pBat').textContent=S.inspected?'정상':'미확인';$('#pBat').className='pill '+(S.inspected?'r':'')},
+ route(){}
+};
+const render=k=>R[k]&&R[k]();
+
+/* ---------- route ---------- */
+const stopRoute=()=>{};
+/* ---------- sheets ---------- */
+const sheetList=(title,items,cur,key)=>openSheet(`<b style="font-size:17px;margin-bottom:6px">${title}</b><div class="list" style="overflow:auto">${items.map(v=>`<button class="li ${v===cur?'on':''}" data-pick="${key}" data-v="${v}">${key==='date'?v.replace(/-/g,'. '):v}${v===cur?'<span>✓</span>':''}</button>`).join('')}</div>`);
+const PERIODS=['전체','최근 1주일','최근 1개월','최근 3개월','최근 6개월','최근 1년'];
+let hsTab='period',draft={};
+const histSheet=()=>{const opt=hsTab==='period'?PERIODS.map(p=>[p,draft.p===p]):STORES.map(s=>[s,draft.s.includes(s)]);
+ openSheet(`<div class="seg"><button class="${hsTab==='period'?'on':''}" data-hst="period">예약기간</button><button class="${hsTab==='store'?'on':''}" data-hst="store">점포</button></div>
+ <div class="opts${hsTab==='store'?' one':''}">${opt.map(([v,on])=>`<button class="ck ${on?'on':''}" data-hopt="${v}"><span class="box">${ck}</span>${v}</button>`).join('')}</div>
+ ${hsTab==='period'?`<div class="dates"><button class="field" data-act="soon">연도-월-일</button><button class="field" data-act="soon">연도-월-일</button></div>`:''}
+ <div class="acts"><button class="btn o" data-hreset>초기화</button><button class="btn p" data-happly>선택완료</button></div>`)};
+let fsTab=2,fdraft={};
+const FOPTS=[['전체','B1','1F','2F','3F'],['전체','패션','슈즈','스포츠','카페','한식','양식','중식','일식','마트','반려동물','편의시설'],['free','cart','no']];
+const findSheet=()=>{const o=FOPTS[fsTab];
+ openSheet(`<div class="seg">${['층','카테고리','반려견'].map((n,i)=>`<button class="${i===fsTab?'on':''}" data-fst="${i}">${n}</button>`).join('')}</div>
+ <div class="opts">${o.map(v=>{const on=fsTab===2?fdraft.dog.includes(v):fdraft[fsTab?'cat':'floor']===v;return `<button class="ck ${on?'on':''}" data-fopt="${v}"><span class="box">${ck}</span>${fsTab===2?TAG[v][0]:v}</button>`}).join('')}</div>
+ <div class="acts"><button class="btn o" data-freset>초기화</button><button class="btn p" data-fapply>선택완료</button></div>`)};
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+ const t=e.target.closest('button,[data-go]');if(!t)return;const d=t.dataset;
+ if('back' in d)return back();
+ if('home' in d)return home();
+ if(d.tabgo)return tabgo(d.tabgo);
+ if(d.go){if(d.go==='find')S.fTab=d.tab?+d.tab:1;if('past' in d)S.hTab='past';if(d.go==='history'&&!('past' in d)&&stack.at(-1)!=='device')S.hTab='cur';return go(d.go)}
+ if(d.k){stack=d.k==='home'?['home']:['home',d.k];if(d.k==='done'||d.k==='store')stack=['home',d.k==='done'?'rent':'find',d.k];return show(d.k,'f')}
+ if('ck' in d){const i=$$('[data-ck]').indexOf(t);S.form.checks[i]=!S.form.checks[i];return R.rent()}
+ if(d.sheet==='store')return sheetList('대여 점포',STORES,S.form.store,'store');
+ if(d.sheet==='date')return sheetList('이용 날짜',DATES,S.form.date,'date');
+ if(d.sheet==='time')return sheetList('시작 시간',TIMES,S.form.time,'time');
+ if(d.pick){S.form[d.pick]=d.v;closeAll();return R.rent()}
+ if(d.h){S.hTab=d.h;return R.history()}
+ if(d.hs){hsTab=d.hs;draft={p:S.hPeriod,s:[...S.hStores]};return histSheet()}
+ if(d.hst){hsTab=d.hst;return histSheet()}
+ if(d.hopt){if(hsTab==='period')draft.p=d.hopt;else draft.s=draft.s.includes(d.hopt)?draft.s.filter(v=>v!==d.hopt):[...draft.s,d.hopt];return histSheet()}
+ if('hreset' in d){draft={p:'전체',s:[]};return histSheet()}
+ if('happly' in d){S.hPeriod=draft.p;S.hStores=draft.s;closeAll();return R.history()}
+ if(d.clr){if(d.clr==='p')S.hPeriod='전체';else S.hStores=[];return R.history()}
+ if(t.id==='hReset'){S.hPeriod='전체';S.hStores=[];return R.history()}
+ if(d.ret)return confirmM('반납을 완료할까요?','안내 데스크 1F에 펫모차를 반납했는지 확인해주세요.','반납 완료',()=>{const r=S.cur.find(v=>v.id==d.ret);S.cur=S.cur.filter(v=>v!==r);S.past.unshift({store:r.store,rsv:r.rsv,use:r.use.replace('~','~(1시간 46분 이용)'),cart:r.cart+'·탄숑 초코'});S.connected=false;R.history();toast('반납이 완료됐어요')});
+ if(d.cancel)return confirmM('예약을 취소할까요?','취소한 예약은 되돌릴 수 없어요.','예약 취소',()=>{S.cur=S.cur.filter(v=>v.id!=d.cancel);R.history();toast('예약이 취소됐어요')});
+ if(d.fs){fsTab=+d.fs;fdraft={...S.fFilter,dog:[...S.fFilter.dog]};return findSheet()}
+ if(d.fst){fsTab=+d.fst;return findSheet()}
+ if(d.fopt){if(fsTab===2)fdraft.dog=fdraft.dog.includes(d.fopt)?fdraft.dog.filter(v=>v!==d.fopt):[...fdraft.dog,d.fopt];else fdraft[fsTab?'cat':'floor']=d.fopt;return findSheet()}
+ if('freset' in d){fdraft={floor:'전체',cat:'전체',dog:[]};return findSheet()}
+ if('fapply' in d){S.fFilter=fdraft;closeAll();return R.find()}
+ if('fl' in d)return t.parentElement.classList.toggle('open');
+ if(d.st){$('#sTitle').textContent=$('#sName').textContent=d.st;$('#sFloor').textContent=d.fl2;S.heart=false;return go('store')}
+ if(d.z){S.zoom=Math.min(2,Math.max(1,S.zoom+(+d.z)*.25));return R.find()}
+ if(t.parentElement&&t.parentElement.id==='fTabs'){S.fTab=$$('#fTabs .tab').indexOf(t);return R.find()}
+ if(t.parentElement&&t.parentElement.id==='mode'){S.mode=$$('#mode button').indexOf(t);R.device();return toast(S.mode?'전동 저속 모드로 전환했어요':'수동 모드로 전환했어요')}
+ if('sw' in d){const s=t.querySelector('.sw');s.classList.toggle('on');return toast(`${t.firstChild.textContent.trim()} ${s.classList.contains('on')?'켜짐':'꺼짐'}`)}
+ const A={dog:'반려견 케어 기록은 다음 버전에서 제공돼요',news:'스타필드 하남 3F에 신규 매장 5곳이 오픈했어요',call:'031-1234-5678 로 전화를 연결합니다',homepage:'반상 홈페이지로 이동합니다',faq:'이용가이드로 이동합니다',report:'고장·오류 신고 화면으로 이동합니다',ask:'1:1 문의 화면으로 이동합니다',soon:'직접 입력은 프로토타입에서 생략했어요'};
+ if(d.act)return toast(A[d.act]);
+ if(t.id==='heart'){S.heart=!S.heart;R.store();return toast(S.heart?'관심 매장에 추가했어요':'관심 매장에서 삭제했어요')}
+ if(t.id==='submit'){const f=S.form;S.cur.unshift({id:++nid,store:f.store,rsv:'2026-11-22',use:`${f.date} ${f.time}~`,cart:'#SF-0'+(20+nid),st:'예약완료'});
+   $('#wait').textContent=`대기 인원: ${1+Math.floor(Math.random()*4)}명`;stack=['home','done'];S.form.checks=[true,false,false];return show('done','f')}
+ if(t.id==='connBtn'){if(S.connected)return confirmM('연결을 해제할까요?','이용 중에는 기기 상태 알림을 받을 수 없어요.','연결 해제',()=>{S.connected=false;R.device();toast('연결이 해제됐어요')});
+   t.textContent='연결 중…';t.disabled=true;return setTimeout(()=>{S.connected=true;S.battery=60;t.disabled=false;R.device();toast('펫모차 #SF-001과 연결됐어요')},1100)}
+ if(t.id==='inspect'){t.textContent='점검 중…';return setTimeout(()=>{S.inspected=true;t.textContent='점검 요청';R.device();toast(S.connected?'모든 항목이 정상이에요':'배터리 시스템 정상 · 기기를 연결해주세요')},1200)}
+ if(t.id==='saveInfo'){const n=$('#nick').value.trim(),g=$('#dog').value.trim();return toast(n||g?`${g||n}님 정보를 저장했어요`:'닉네임 또는 반려견 이름을 입력해주세요')}
+ if(t.id==='endRoute'){stopRoute();toast('길 안내를 종료했어요');return back()}
+ if(t.id==='mYes'){const f=onYes;closeAll();return f&&f()}
+ if(t.id==='mNo')return closeAll();
+ if(t.id==='resetAll'){S=init();closeAll();stack=['home'];return show('home')}
+});
+$('#dim').addEventListener('click',closeAll);
+$('#sForm').addEventListener('submit',e=>{e.preventDefault();R.find();const n=$$('#floors .st').length;toast(n?`검색 결과 ${n}건`:'검색 결과가 없어요')});
+$('#sInput').addEventListener('input',()=>{if(!$('#sInput').value)R.find()});
+
+$('#index').innerHTML=Object.entries(NAMES).map(([k,v],i)=>`<li><button data-k="${k}"><span>${String(i+1).padStart(2,'0')}</span>${v}</button></li>`).join('');
+show('home');
+}
+</script>
+</body>
+</html>
