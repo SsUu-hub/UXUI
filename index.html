@@ -381,12 +381,6 @@ label.l{display:block;font-size:14px;color:var(--sub);margin:0 0 8px}
 </div>
 
 </div>
-<aside class="side">
-  <h1>스타필드 펫모차</h1>
-  <p>iPhone 16 (393×852) 기준 · 화면을 직접 눌러보거나 아래에서 바로 이동하세요.</p>
-  <ol id="index"></ol>
-  <button class="reset" id="resetAll">처음 상태로 초기화</button>
-</aside>
 </div>
 
 <script>
@@ -436,7 +430,7 @@ const show=(to,dir)=>{
 };
 const go=to=>{stack.push(to);show(to,'f')};
 const back=()=>{if(stack.length<2)return toast('첫 화면이에요');stack.pop();show(stack.at(-1),'b')};
-const home=()=>{closeAll();if(stack.at(-1)==='home'){$('#home .body').scrollTo({top:0,behavior:'smooth'});return toast('펫모차 메인이에요')}stack=['home'];show('home','b')};
+const home=()=>{closeAll();$('#home .body').scrollTop=0;if(stack.at(-1)==='home'){$('#home .body').scrollTo({top:0,behavior:'smooth'});return toast('펫모차 메인이에요')}stack=['home'];show('home','b')};
 const tabgo=to=>{if(stack.at(-1)===to){$('#'+to+' .body').scrollTo({top:0,behavior:'smooth'});return}stack=to==='home'?['home']:['home',to];show(to,'f')};
 
 /* ---------- toast / sheet / modal ---------- */
@@ -537,7 +531,7 @@ document.addEventListener('click',e=>{
  if('happly' in d){S.hPeriod=draft.p;S.hStores=draft.s;closeAll();return R.history()}
  if(d.clr){if(d.clr==='p')S.hPeriod='전체';else S.hStores=[];return R.history()}
  if(t.id==='hReset'){S.hPeriod='전체';S.hStores=[];return R.history()}
- if(d.ret)return confirmM('반납을 완료할까요?','안내 데스크 1F에 펫모차를 반납했는지 확인해주세요.','반납 완료',()=>{const r=S.cur.find(v=>v.id==d.ret);S.cur=S.cur.filter(v=>v!==r);S.past.unshift({store:r.store,rsv:r.rsv,use:r.use.replace('~','~(1시간 46분 이용)'),cart:r.cart+'·탄숑 초코'});S.connected=false;R.history();toast('반납이 완료됐어요')});
+ if(d.ret)return confirmM('반납을 완료할까요?','안내 데스크 1F에 펫모차를 반납했는지 확인해주세요.','반납 완료',()=>{const r=S.cur.find(v=>v.id==d.ret);S.cur=S.cur.filter(v=>v!==r);S.past.unshift({store:r.store,rsv:r.rsv,use:r.use.replace('~','~(1시간 46분 이용)'),cart:r.cart+'·탄숑 초코'});S.connected=false;home();toast('반납이 완료됐어요 · 펫모차 메인으로 이동했어요')});
  if(d.cancel)return confirmM('예약을 취소할까요?','취소한 예약은 되돌릴 수 없어요.','예약 취소',()=>{S.cur=S.cur.filter(v=>v.id!=d.cancel);R.history();toast('예약이 취소됐어요')});
  if(d.fs){fsTab=+d.fs;fdraft={...S.fFilter,dog:[...S.fFilter.dog]};return findSheet()}
  if(d.fst){fsTab=+d.fst;return findSheet()}
@@ -559,7 +553,7 @@ document.addEventListener('click',e=>{
    t.textContent='연결 중…';t.disabled=true;return setTimeout(()=>{S.connected=true;S.battery=60;t.disabled=false;R.device();toast('펫모차 #SF-001과 연결됐어요')},1100)}
  if(t.id==='inspect'){t.textContent='점검 중…';return setTimeout(()=>{S.inspected=true;t.textContent='점검 요청';R.device();toast(S.connected?'모든 항목이 정상이에요':'배터리 시스템 정상 · 기기를 연결해주세요')},1200)}
  if(t.id==='saveInfo'){const n=$('#nick').value.trim(),g=$('#dog').value.trim();return toast(n||g?`${g||n}님 정보를 저장했어요`:'닉네임 또는 반려견 이름을 입력해주세요')}
- if(t.id==='endRoute'){stopRoute();toast('길 안내를 종료했어요');return back()}
+ if(t.id==='endRoute'){home();return toast('길 안내를 종료했어요')}
  if(t.id==='mYes'){const f=onYes;closeAll();return f&&f()}
  if(t.id==='mNo')return closeAll();
  if(t.id==='resetAll'){S=init();closeAll();stack=['home'];return show('home')}
@@ -568,10 +562,9 @@ $('#dim').addEventListener('click',closeAll);
 $('#sForm').addEventListener('submit',e=>{e.preventDefault();R.find();const n=$$('#floors .st').length;toast(n?`검색 결과 ${n}건`:'검색 결과가 없어요')});
 $('#sInput').addEventListener('input',()=>{if(!$('#sInput').value)R.find()});
 
-$('#index').innerHTML=Object.entries(NAMES).map(([k,v],i)=>`<li><button data-k="${k}"><span>${String(i+1).padStart(2,'0')}</span>${v}</button></li>`).join('');
 show('home');
 const fit=()=>{const f=$('#fit');if(innerWidth<=500){f.style.removeProperty('--s');return}
- const s=Math.min(1,(innerHeight-40)/874,(innerWidth-(innerWidth>860?360:32))/415);f.style.setProperty('--s',s.toFixed(3))};
+ const s=Math.min(1,(innerHeight-40)/874,(innerWidth-32)/415);f.style.setProperty('--s',s.toFixed(3))};
 addEventListener('resize',fit);fit();
 }
 </script>
